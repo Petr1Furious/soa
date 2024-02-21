@@ -1,0 +1,28 @@
+@startuml Context
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(user, "User", "Social network user")
+Container(frontend, "User frontend", "TypeScript", "GUI for user")
+Rel(user, frontend, "Uses")
+
+System_Boundary(c1, "Social network service", $link="https://github.com/plantuml-stdlib/C4-PlantUML") {
+    Container(mainService, "Main service", "Go", "Registers and authenticates users; client API")
+    Container(statsService, "Statistics", "Go", "Counts likes and views")
+    Container(postsService, "Posts", "Go", "Manages posts and comments")
+    ContainerDb(mainDB, "Main service database", "PostgreSQL", "Holds passwords and tokens")
+    ContainerDb(statsDB, "Statistics database", "ClickHouse", "Holds all views and likes")
+    ContainerDb(postsDB, "Posts database", "PostgreSQL", "Holds posts and comments")
+    Container(broker, "Message broker", "Kafka", "Intermediary for passing likes and views")
+}
+
+Rel(frontend, mainService, "Uses", "REST API, HTTP")
+Rel(mainService, statsService, "Uses", "gRPC")
+Rel(mainService, postsService, "Uses", "gRPC")
+Rel(mainService, mainDB, "Uses")
+Rel(statsService, statsDB, "Uses")
+Rel(postsService, postsDB, "Uses")
+Rel(mainService, broker, "Publish")
+Rel(broker, statsService, "Subscribe")
+
+@enduml
