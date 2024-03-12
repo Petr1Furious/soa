@@ -2,9 +2,8 @@
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-Person(personAlias, "Label", "Optional Description")
-Container(containerAlias, "Label", "Technology", "Optional Description")
-System(systemAlias, "Label", "Optional Description")
+Person(user, "User", "Social network user")
+System(service, "Social network service", "Multiple microservices in Docker")
+Rel(user, service, "Creates, modifies and deletes posts, comments, leaves likes, watches statistics etc")
 
-Rel(personAlias, containerAlias, "Label", "Optional Technology")
 @enduml
