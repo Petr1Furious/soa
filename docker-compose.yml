@@ -1,22 +1,41 @@
-version: '3.8'
 services:
   main_service:
-    build: ./main_service
+    build:
+      context: ./
+      dockerfile: ./main_service/Dockerfile
     ports:
       - "8765:8080"
     depends_on:
-      - db
+      - main_db
+      - posts_service
     env_file:
       - .env
 
-  db:
+  main_db:
     image: postgres:16.2
     environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${MAIN_DB_USERNAME}
+      POSTGRES_PASSWORD: ${MAIN_DB_PASSWORD}
+      POSTGRES_DB: ${MAIN_DB_NAME}
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+  posts_service:
+    build: ./posts_service
+    depends_on:
+      - posts_db
+    env_file:
+      - .env
+
+  posts_db:
+    image: postgres:16.2
+    environment:
+      POSTGRES_USER: ${POSTS_DB_USERNAME}
+      POSTGRES_PASSWORD: ${POSTS_DB_PASSWORD}
+      POSTGRES_DB: ${POSTS_DB_NAME}
+    volumes:
+      - posts_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:
+  posts_data:

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package posts;
+
+option go_package = "posts_service/pkg/pb";
+
+service PostService {
+  rpc CreatePost(CreatePostRequest) returns (PostResponse);
+  rpc UpdatePost(UpdatePostRequest) returns (PostResponse);
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
+  rpc GetPost(GetPostRequest) returns (PostResponse);
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+}
+
+message CreatePostRequest {
+  string content = 1;
+  string userId = 2;
+}
+
+message UpdatePostRequest {
+  string postId = 1;
+  string content = 2;
+  string userId = 3;
+}
+
+message DeletePostRequest {
+  string postId = 1;
+  string userId = 2;
+}
+
+message GetPostRequest {
+  string postId = 1;
+  string userId = 2;
+}
+
+message ListPostsRequest {
+  string userId = 1;
+  int32 page = 2;
+  int32 pageSize = 3;
+}
+
+message PostResponse {
+  string postId = 1;
+  string content = 2;
+  string userId = 3;
+}
+
+message DeletePostResponse {
+  string postId = 1;
+  bool success = 2;
+}
+
+message ListPostsResponse {
+  repeated PostResponse posts = 1;
+  int32 totalPosts = 2;
+}
