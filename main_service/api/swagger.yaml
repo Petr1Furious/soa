@@ -71,6 +71,116 @@ paths:
           description: Unexpected error
       security:
       - cookieAuth: []
+  /posts:
+    post:
+      summary: Create a new post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "201":
+          description: Post created
+        "400":
+          description: Wrong format
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
+    get:
+      summary: Get a list of posts
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: A list of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
+  /posts/{postId}:
+    get:
+      summary: Get a post by ID
+      parameters:
+      - name: postId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: A post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
+    patch:
+      summary: Update a post
+      parameters:
+      - name: postId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: Post updated
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
+    delete:
+      summary: Delete a post
+      parameters:
+      - name: postId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Post deleted
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
 components:
   schemas:
     auth_body:
@@ -94,6 +204,15 @@ components:
           type: string
           format: email
         phoneNumber:
+          type: string
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        userId:
           type: string
     users_body:
       type: object

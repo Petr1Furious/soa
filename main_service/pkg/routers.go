@@ -74,4 +74,39 @@ var routes = Routes{
 		"/users",
 		UsersPost,
 	},
+
+	Route{
+		"PostsGet",
+		strings.ToUpper("Get"),
+		"/posts",
+		PostsGet,
+	},
+
+	Route{
+		"PostsPost",
+		strings.ToUpper("Post"),
+		"/posts",
+		PostsPost,
+	},
+
+	Route{
+		"PostsPostIdDelete",
+		strings.ToUpper("Delete"),
+		"/posts/{postId}",
+		PostsPostIdDelete,
+	},
+
+	Route{
+		"PostsPostIdGet",
+		strings.ToUpper("Get"),
+		"/posts/{postId}",
+		PostsPostIdGet,
+	},
+
+	Route{
+		"PostsPostIdPatch",
+		strings.ToUpper("Patch"),
+		"/posts/{postId}",
+		PostsPostIdPatch,
+	},
 }

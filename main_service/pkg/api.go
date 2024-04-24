@@ -18,32 +18,54 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"database/sql"
 
+	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"posts_service/pkg/pb"
 )
 
 var db *sql.DB
 
+var grpcClient pb.PostServiceClient
+
+func InitGRPC() {
+	grpcServerAddr, ok := os.LookupEnv("GRPC_SERVER")
+	if !ok {
+		log.Fatalf("GRPC_SERVER not set")
+	}
+	conn, err := grpc.Dial(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	}
+	grpcClient = pb.NewPostServiceClient(conn)
+}
+
 func Init() {
+	InitGRPC()
+
 	var err error
-	host, ok := os.LookupEnv("DB_HOST")
+	host, ok := os.LookupEnv("MAIN_DB_HOST")
 	if !ok {
-		log.Fatalf("DB_HOST not set")
+		log.Fatalf("MAIN_DB_HOST not set")
 	}
-	username, ok := os.LookupEnv("DB_USERNAME")
+	username, ok := os.LookupEnv("MAIN_DB_USERNAME")
 	if !ok {
-		log.Fatalf("DB_USERNAME not set")
+		log.Fatalf("MAIN_DB_USERNAME not set")
 	}
-	password, ok := os.LookupEnv("DB_PASSWORD")
+	password, ok := os.LookupEnv("MAIN_DB_PASSWORD")
 	if !ok {
-		log.Fatalf("DB_PASSWORD not set")
+		log.Fatalf("MAIN_DB_PASSWORD not set")
 	}
-	dbname, ok := os.LookupEnv("DB_NAME")
+	dbname, ok := os.LookupEnv("MAIN_DB_NAME")
 	if !ok {
-		log.Fatalf("DB_NAME not set")
+		log.Fatalf("MAIN_DB_NAME not set")
 	}
 
 	db, err = sql.Open("postgres", fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", host, username, password, dbname))
@@ -51,8 +73,7 @@ func Init() {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
+	for i := 0; i < 5; i++ {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
         login TEXT NOT NULL,
         password TEXT NOT NULL,
@@ -66,7 +87,9 @@ func Init() {
 			break
 		}
 		log.Printf("Error creating table: %v", err)
-		time.Sleep(time.Second * time.Duration(i+1))
+		if i < 4 {
+			time.Sleep(time.Second * time.Duration(i+1))
+		}
 	}
 
 	if err != nil {
@@ -193,20 +216,29 @@ func getUserSessionID(sessionID string) (string, error) {
 	return userID, nil
 }
 
-func UsersMePatch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
+func checkAuthAndGetUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	sessionID, err := r.Cookie("SESSIONID")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
-		return
+		return "", false
 	}
 
 	userID, err := getUserSessionID(sessionID.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
+		return "", false
+	}
+
+	return userID, true
+}
+
+func UsersMePatch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
 		return
 	}
 
@@ -216,7 +248,7 @@ func UsersMePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := UsersMeBody{}
-	err = json.Unmarshal(body, &user)
+	err := json.Unmarshal(body, &user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Error unmarshaling body: %v", err)
@@ -316,4 +348,190 @@ func UsersPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func PostsGet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	params := r.URL.Query()
+	pageStr := params.Get("page")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		http.Error(w, "Invalid page number", http.StatusBadRequest)
+		return
+	}
+	pageSizeStr := params.Get("pageSize")
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil {
+		http.Error(w, "Invalid page size", http.StatusBadRequest)
+		return
+	}
+
+	var createPostRequest = &pb.ListPostsRequest{
+		UserId:   userID,
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+	}
+	resp, err := grpcClient.ListPosts(r.Context(), createPostRequest)
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func PostsPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	body, ok := ReadBody(w, r)
+	if !ok {
+		return
+	}
+
+	var content string
+	err := json.Unmarshal(body, &content)
+	if err != nil {
+		http.Error(w, "Error unmarshaling body", http.StatusBadRequest)
+		return
+	}
+
+	var createPostRequest = &pb.CreatePostRequest{
+		Content: content,
+		UserId:  userID,
+	}
+	resp, err := grpcClient.CreatePost(r.Context(), createPostRequest)
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	var getPostRequest = &pb.GetPostRequest{
+		UserId: userID,
+		PostId: postID,
+	}
+	resp, err := grpcClient.GetPost(r.Context(), getPostRequest)
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func PostsPostIdDelete(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	var deletePostRequest = &pb.DeletePostRequest{
+		UserId: userID,
+		PostId: postID,
+	}
+	_, err := grpcClient.DeletePost(r.Context(), deletePostRequest)
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	body, ok := ReadBody(w, r)
+	if !ok {
+		return
+	}
+
+	var content string
+	err := json.Unmarshal(body, &content)
+	if err != nil {
+		http.Error(w, "Error unmarshaling body", http.StatusBadRequest)
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	var updatePostRequest = &pb.UpdatePostRequest{
+		UserId:  userID,
+		PostId:  postID,
+		Content: content,
+	}
+	resp, err := grpcClient.UpdatePost(r.Context(), updatePostRequest)
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
 }
