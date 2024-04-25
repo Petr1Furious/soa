@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package statistics;
+
+option go_package = "statistics_service/pkg/pb";
+
+message ViewEvent {
+  string userId = 1;
+  string postId = 2;
+}
+
+message LikeEvent {
+  string userId = 1;
+  string postId = 2;
+}
+
+message Event {
+  oneof event_type {
+    ViewEvent view_event = 1;
+    LikeEvent like_event = 2;
+  }
+}

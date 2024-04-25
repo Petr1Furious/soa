@@ -116,14 +116,8 @@ func (s *Server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 }
 
 func (s *Server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.PostResponse, error) {
-	if ok, err := s.checkUserPermission(ctx, req.UserId, req.PostId); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, fmt.Errorf("user does not have permission to update post")
-	}
-
 	var content, userId string
-	err := s.db.QueryRow(ctx, `SELECT content, user_id FROM posts WHERE id = $1 AND user_id = $2`, req.PostId, req.UserId).Scan(&content, &userId)
+	err := s.db.QueryRow(ctx, `SELECT content, user_id FROM posts WHERE id = $1`, req.PostId).Scan(&content, &userId)
 	if err != nil {
 		return nil, err
 	}

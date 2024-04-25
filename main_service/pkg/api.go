@@ -25,15 +25,20 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/segmentio/kafka-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
-	"posts_service/pkg/pb"
+	ppb "posts_service/pkg/pb"
+	spb "statistics_service/pkg/pb"
 )
 
 var db *sql.DB
 
-var grpcClient pb.PostServiceClient
+var grpcClient ppb.PostServiceClient
+
+var kafkaProducer *kafka.Writer
 
 func InitGRPC() {
 	grpcServerAddr, ok := os.LookupEnv("GRPC_SERVER")
@@ -44,11 +49,24 @@ func InitGRPC() {
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	grpcClient = pb.NewPostServiceClient(conn)
+	grpcClient = ppb.NewPostServiceClient(conn)
+}
+
+func InitKafka() {
+	kafkaAddr, ok := os.LookupEnv("KAFKA_SERVER")
+	if !ok {
+		log.Fatalf("KAFKA_SERVER not set")
+	}
+	kafkaProducer = kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{kafkaAddr},
+		Topic:   "my-topic",
+		Logger:  log.New(os.Stdout, "kafka writer: ", 0),
+	})
 }
 
 func Init() {
 	InitGRPC()
+	InitKafka()
 
 	var err error
 	host, ok := os.LookupEnv("MAIN_DB_HOST")
@@ -372,7 +390,7 @@ func PostsGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var createPostRequest = &pb.ListPostsRequest{
+	var createPostRequest = &ppb.ListPostsRequest{
 		UserId:   userID,
 		Page:     int32(page),
 		PageSize: int32(pageSize),
@@ -414,7 +432,7 @@ func PostsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var createPostRequest = &pb.CreatePostRequest{
+	var createPostRequest = &ppb.CreatePostRequest{
 		Content: content,
 		UserId:  userID,
 	}
@@ -446,7 +464,7 @@ func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	postID := vars["postId"]
 
-	var getPostRequest = &pb.GetPostRequest{
+	var getPostRequest = &ppb.GetPostRequest{
 		UserId: userID,
 		PostId: postID,
 	}
@@ -478,7 +496,7 @@ func PostsPostIdDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	postID := vars["postId"]
 
-	var deletePostRequest = &pb.DeletePostRequest{
+	var deletePostRequest = &ppb.DeletePostRequest{
 		UserId: userID,
 		PostId: postID,
 	}
@@ -514,7 +532,7 @@ func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	postID := vars["postId"]
 
-	var updatePostRequest = &pb.UpdatePostRequest{
+	var updatePostRequest = &ppb.UpdatePostRequest{
 		UserId:  userID,
 		PostId:  postID,
 		Content: content,
@@ -534,4 +552,78 @@ func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respBytes)
+}
+
+func PostsPostIdViewPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	viewEvent := &spb.Event_ViewEvent{
+		ViewEvent: &spb.ViewEvent{
+			UserId: userID,
+			PostId: postID,
+		},
+	}
+	event := &spb.Event{
+		EventType: viewEvent,
+	}
+	msg, err := proto.Marshal(event)
+	if err != nil {
+		http.Error(w, "Error marshaling view message", http.StatusInternalServerError)
+		return
+	}
+
+	err = kafkaProducer.WriteMessages(r.Context(), kafka.Message{
+		Value: msg,
+	})
+	if err != nil {
+		http.Error(w, "Kafka: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func PostsPostIdLikePost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	likeEvent := &spb.Event_LikeEvent{
+		LikeEvent: &spb.LikeEvent{
+			UserId: userID,
+			PostId: postID,
+		},
+	}
+	event := &spb.Event{
+		EventType: likeEvent,
+	}
+	msg, err := proto.Marshal(event)
+	if err != nil {
+		http.Error(w, "Error marshaling like message", http.StatusInternalServerError)
+		return
+	}
+
+	err = kafkaProducer.WriteMessages(r.Context(), kafka.Message{
+		Value: msg,
+	})
+	if err != nil {
+		http.Error(w, "Kafka: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

@@ -109,4 +109,18 @@ var routes = Routes{
 		"/posts/{postId}",
 		PostsPostIdPatch,
 	},
+
+	Route{
+		"PostsPostIdViewPost",
+		strings.ToUpper("Post"),
+		"/posts/{postId}/view",
+		PostsPostIdViewPost,
+	},
+
+	Route{
+		"PostsPostIdLikePost",
+		strings.ToUpper("Post"),
+		"/posts/{postId}/like",
+		PostsPostIdLikePost,
+	},
 }

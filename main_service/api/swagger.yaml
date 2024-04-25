@@ -181,6 +181,42 @@ paths:
           description: Unexpected error
       security:
       - cookieAuth: []
+  /posts/{postId}/view:
+    post:
+      summary: View a post
+      parameters:
+      - name: postId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Post viewed
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
+  /posts/{postId}/like:
+    post:
+      summary: Like a post
+      parameters:
+      - name: postId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Post liked
+        "401":
+          description: Session ID is missing or invalid
+        "5XX":
+          description: Unexpected error
+      security:
+      - cookieAuth: []
 components:
   schemas:
     auth_body:

@@ -2,6 +2,7 @@ FROM golang:1.21.1 AS build
 
 COPY main_service /go/src/main_service
 COPY posts_service /go/src/posts_service
+COPY statistics_service /go/src/statistics_service
 COPY go* /go/src/
 WORKDIR /go/src/main_service
 

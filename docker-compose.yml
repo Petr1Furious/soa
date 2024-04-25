@@ -6,8 +6,14 @@ services:
     ports:
       - "8765:8080"
     depends_on:
-      - main_db
-      - posts_service
+      main_db:
+        condition: service_started
+      posts_service:
+        condition: service_started
+      statistics_service:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     env_file:
       - .env
 
@@ -36,6 +42,47 @@ services:
     volumes:
       - posts_data:/var/lib/postgresql/data
 
+  statistics_service:
+    build: ./statistics_service
+    depends_on:
+      statistics_db:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  statistics_db:
+    image: yandex/clickhouse-server:latest
+    environment:
+      - CLICKHOUSE_USER=${STATS_DB_USERNAME}
+      - CLICKHOUSE_PASSWORD=${STATS_DB_PASSWORD}
+    ports:
+      - "8124:8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_SERVER}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: nc -z localhost 9092 || exit -1
+      start_period: 15s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
 volumes:
   postgres_data:
   posts_data:
+  clickhouse_data:
