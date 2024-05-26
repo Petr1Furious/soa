@@ -20,17 +20,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ViewEvent struct {
+type PostStatsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId string `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
-	PostId string `protobuf:"bytes,2,opt,name=postId,proto3" json:"postId,omitempty"`
+	PostId string `protobuf:"bytes,1,opt,name=postId,proto3" json:"postId,omitempty"`
 }
 
-func (x *ViewEvent) Reset() {
-	*x = ViewEvent{}
+func (x *PostStatsRequest) Reset() {
+	*x = PostStatsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -38,13 +37,13 @@ func (x *ViewEvent) Reset() {
 	}
 }
 
-func (x *ViewEvent) String() string {
+func (x *PostStatsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ViewEvent) ProtoMessage() {}
+func (*PostStatsRequest) ProtoMessage() {}
 
-func (x *ViewEvent) ProtoReflect() protoreflect.Message {
+func (x *PostStatsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -56,36 +55,29 @@ func (x *ViewEvent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ViewEvent.ProtoReflect.Descriptor instead.
-func (*ViewEvent) Descriptor() ([]byte, []int) {
+// Deprecated: Use PostStatsRequest.ProtoReflect.Descriptor instead.
+func (*PostStatsRequest) Descriptor() ([]byte, []int) {
 	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ViewEvent) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *ViewEvent) GetPostId() string {
+func (x *PostStatsRequest) GetPostId() string {
 	if x != nil {
 		return x.PostId
 	}
 	return ""
 }
 
-type LikeEvent struct {
+type PostStatsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId string `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
-	PostId string `protobuf:"bytes,2,opt,name=postId,proto3" json:"postId,omitempty"`
+	ViewCount int32 `protobuf:"varint,1,opt,name=viewCount,proto3" json:"viewCount,omitempty"`
+	LikeCount int32 `protobuf:"varint,2,opt,name=likeCount,proto3" json:"likeCount,omitempty"`
 }
 
-func (x *LikeEvent) Reset() {
-	*x = LikeEvent{}
+func (x *PostStatsResponse) Reset() {
+	*x = PostStatsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -93,13 +85,13 @@ func (x *LikeEvent) Reset() {
 	}
 }
 
-func (x *LikeEvent) String() string {
+func (x *PostStatsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LikeEvent) ProtoMessage() {}
+func (*PostStatsResponse) ProtoMessage() {}
 
-func (x *LikeEvent) ProtoReflect() protoreflect.Message {
+func (x *PostStatsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -111,39 +103,35 @@ func (x *LikeEvent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LikeEvent.ProtoReflect.Descriptor instead.
-func (*LikeEvent) Descriptor() ([]byte, []int) {
+// Deprecated: Use PostStatsResponse.ProtoReflect.Descriptor instead.
+func (*PostStatsResponse) Descriptor() ([]byte, []int) {
 	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LikeEvent) GetUserId() string {
+func (x *PostStatsResponse) GetViewCount() int32 {
 	if x != nil {
-		return x.UserId
+		return x.ViewCount
 	}
-	return ""
+	return 0
 }
 
-func (x *LikeEvent) GetPostId() string {
+func (x *PostStatsResponse) GetLikeCount() int32 {
 	if x != nil {
-		return x.PostId
+		return x.LikeCount
 	}
-	return ""
+	return 0
 }
 
-type Event struct {
+type TopPostsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Types that are assignable to EventType:
-	//
-	//	*Event_ViewEvent
-	//	*Event_LikeEvent
-	EventType isEvent_EventType `protobuf_oneof:"event_type"`
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"` // "views" or "likes"
 }
 
-func (x *Event) Reset() {
-	*x = Event{}
+func (x *TopPostsRequest) Reset() {
+	*x = TopPostsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -151,13 +139,13 @@ func (x *Event) Reset() {
 	}
 }
 
-func (x *Event) String() string {
+func (x *TopPostsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Event) ProtoMessage() {}
+func (*TopPostsRequest) ProtoMessage() {}
 
-func (x *Event) ProtoReflect() protoreflect.Message {
+func (x *TopPostsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -169,47 +157,267 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Event.ProtoReflect.Descriptor instead.
-func (*Event) Descriptor() ([]byte, []int) {
+// Deprecated: Use TopPostsRequest.ProtoReflect.Descriptor instead.
+func (*TopPostsRequest) Descriptor() ([]byte, []int) {
 	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{2}
 }
 
-func (m *Event) GetEventType() isEvent_EventType {
-	if m != nil {
-		return m.EventType
+func (x *TopPostsRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+type Post struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorId string `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Count    int32  `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"` // views or likes
+}
+
+func (x *Post) Reset() {
+	*x = Post{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Post) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Post) ProtoMessage() {}
+
+func (x *Post) ProtoReflect() protoreflect.Message {
+	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Post.ProtoReflect.Descriptor instead.
+func (*Post) Descriptor() ([]byte, []int) {
+	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Post) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Post) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *Post) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type TopPostsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Posts []*Post `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
+}
+
+func (x *TopPostsResponse) Reset() {
+	*x = TopPostsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TopPostsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TopPostsResponse) ProtoMessage() {}
+
+func (x *TopPostsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TopPostsResponse.ProtoReflect.Descriptor instead.
+func (*TopPostsResponse) Descriptor() ([]byte, []int) {
+	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TopPostsResponse) GetPosts() []*Post {
+	if x != nil {
+		return x.Posts
 	}
 	return nil
 }
 
-func (x *Event) GetViewEvent() *ViewEvent {
-	if x, ok := x.GetEventType().(*Event_ViewEvent); ok {
-		return x.ViewEvent
+type TopUsersRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *TopUsersRequest) Reset() {
+	*x = TopUsersRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TopUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TopUsersRequest) ProtoMessage() {}
+
+func (x *TopUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TopUsersRequest.ProtoReflect.Descriptor instead.
+func (*TopUsersRequest) Descriptor() ([]byte, []int) {
+	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{5}
+}
+
+type User struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	LikesCount int32  `protobuf:"varint,2,opt,name=likes_count,json=likesCount,proto3" json:"likes_count,omitempty"`
+}
+
+func (x *User) Reset() {
+	*x = User{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *User) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*User) ProtoMessage() {}
+
+func (x *User) ProtoReflect() protoreflect.Message {
+	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use User.ProtoReflect.Descriptor instead.
+func (*User) Descriptor() ([]byte, []int) {
+	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *User) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *User) GetLikesCount() int32 {
+	if x != nil {
+		return x.LikesCount
+	}
+	return 0
+}
+
+type TopUsersResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Users []*User `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+}
+
+func (x *TopUsersResponse) Reset() {
+	*x = TopUsersResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TopUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TopUsersResponse) ProtoMessage() {}
+
+func (x *TopUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_statistics_service_pkg_pb_statistics_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TopUsersResponse.ProtoReflect.Descriptor instead.
+func (*TopUsersResponse) Descriptor() ([]byte, []int) {
+	return file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TopUsersResponse) GetUsers() []*User {
+	if x != nil {
+		return x.Users
 	}
 	return nil
 }
-
-func (x *Event) GetLikeEvent() *LikeEvent {
-	if x, ok := x.GetEventType().(*Event_LikeEvent); ok {
-		return x.LikeEvent
-	}
-	return nil
-}
-
-type isEvent_EventType interface {
-	isEvent_EventType()
-}
-
-type Event_ViewEvent struct {
-	ViewEvent *ViewEvent `protobuf:"bytes,1,opt,name=view_event,json=viewEvent,proto3,oneof"`
-}
-
-type Event_LikeEvent struct {
-	LikeEvent *LikeEvent `protobuf:"bytes,2,opt,name=like_event,json=likeEvent,proto3,oneof"`
-}
-
-func (*Event_ViewEvent) isEvent_EventType() {}
-
-func (*Event_LikeEvent) isEvent_EventType() {}
 
 var File_statistics_service_pkg_pb_statistics_proto protoreflect.FileDescriptor
 
@@ -217,25 +425,52 @@ var file_statistics_service_pkg_pb_statistics_proto_rawDesc = []byte{
 	0x0a, 0x2a, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x5f, 0x73, 0x65, 0x72,
 	0x76, 0x69, 0x63, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62, 0x2f, 0x73, 0x74, 0x61, 0x74,
 	0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0a, 0x73, 0x74,
-	0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x22, 0x3b, 0x0a, 0x09, 0x56, 0x69, 0x65, 0x77,
-	0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x16, 0x0a,
-	0x06, 0x70, 0x6f, 0x73, 0x74, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x70,
-	0x6f, 0x73, 0x74, 0x49, 0x64, 0x22, 0x3b, 0x0a, 0x09, 0x4c, 0x69, 0x6b, 0x65, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x70, 0x6f,
-	0x73, 0x74, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x70, 0x6f, 0x73, 0x74,
-	0x49, 0x64, 0x22, 0x85, 0x01, 0x0a, 0x05, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x36, 0x0a, 0x0a,
-	0x76, 0x69, 0x65, 0x77, 0x5f, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x15, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x56, 0x69,
-	0x65, 0x77, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x48, 0x00, 0x52, 0x09, 0x76, 0x69, 0x65, 0x77, 0x45,
-	0x76, 0x65, 0x6e, 0x74, 0x12, 0x36, 0x0a, 0x0a, 0x6c, 0x69, 0x6b, 0x65, 0x5f, 0x65, 0x76, 0x65,
-	0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69,
-	0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x4c, 0x69, 0x6b, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x48,
-	0x00, 0x52, 0x09, 0x6c, 0x69, 0x6b, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x42, 0x0c, 0x0a, 0x0a,
-	0x65, 0x76, 0x65, 0x6e, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x42, 0x1b, 0x5a, 0x19, 0x73, 0x74,
-	0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
-	0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x22, 0x2a, 0x0a, 0x10, 0x50, 0x6f, 0x73, 0x74,
+	0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06,
+	0x70, 0x6f, 0x73, 0x74, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x70, 0x6f,
+	0x73, 0x74, 0x49, 0x64, 0x22, 0x4f, 0x0a, 0x11, 0x50, 0x6f, 0x73, 0x74, 0x53, 0x74, 0x61, 0x74,
+	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x76, 0x69, 0x65,
+	0x77, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x09, 0x76, 0x69,
+	0x65, 0x77, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x6c, 0x69, 0x6b, 0x65, 0x43,
+	0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x09, 0x6c, 0x69, 0x6b, 0x65,
+	0x43, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x25, 0x0a, 0x0f, 0x54, 0x6f, 0x70, 0x50, 0x6f, 0x73, 0x74,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x49, 0x0a, 0x04,
+	0x50, 0x6f, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x02, 0x69, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x5f, 0x69,
+	0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x49,
+	0x64, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05,
+	0x52, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x3a, 0x0a, 0x10, 0x54, 0x6f, 0x70, 0x50, 0x6f,
+	0x73, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a, 0x05, 0x70,
+	0x6f, 0x73, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x73, 0x74, 0x61,
+	0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x05, 0x70, 0x6f,
+	0x73, 0x74, 0x73, 0x22, 0x11, 0x0a, 0x0f, 0x54, 0x6f, 0x70, 0x55, 0x73, 0x65, 0x72, 0x73, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x37, 0x0a, 0x04, 0x55, 0x73, 0x65, 0x72, 0x12, 0x0e,
+	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1f,
+	0x0a, 0x0b, 0x6c, 0x69, 0x6b, 0x65, 0x73, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x05, 0x52, 0x0a, 0x6c, 0x69, 0x6b, 0x65, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x22,
+	0x3a, 0x0a, 0x10, 0x54, 0x6f, 0x70, 0x55, 0x73, 0x65, 0x72, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x10, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e,
+	0x55, 0x73, 0x65, 0x72, 0x52, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x32, 0xf4, 0x01, 0x0a, 0x11,
+	0x53, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x65, 0x12, 0x4b, 0x0a, 0x0c, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x73, 0x74, 0x53, 0x74, 0x61, 0x74,
+	0x73, 0x12, 0x1c, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x50,
+	0x6f, 0x73, 0x74, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x1d, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x50, 0x6f, 0x73,
+	0x74, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x48,
+	0x0a, 0x0b, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x70, 0x50, 0x6f, 0x73, 0x74, 0x73, 0x12, 0x1b, 0x2e,
+	0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x54, 0x6f, 0x70, 0x50, 0x6f,
+	0x73, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x73, 0x74, 0x61,
+	0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73, 0x2e, 0x54, 0x6f, 0x70, 0x50, 0x6f, 0x73, 0x74, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x48, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x54,
+	0x6f, 0x70, 0x55, 0x73, 0x65, 0x72, 0x73, 0x12, 0x1b, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73,
+	0x74, 0x69, 0x63, 0x73, 0x2e, 0x54, 0x6f, 0x70, 0x55, 0x73, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63,
+	0x73, 0x2e, 0x54, 0x6f, 0x70, 0x55, 0x73, 0x65, 0x72, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x42, 0x1b, 0x5a, 0x19, 0x73, 0x74, 0x61, 0x74, 0x69, 0x73, 0x74, 0x69, 0x63, 0x73,
+	0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -250,17 +485,28 @@ func file_statistics_service_pkg_pb_statistics_proto_rawDescGZIP() []byte {
 	return file_statistics_service_pkg_pb_statistics_proto_rawDescData
 }
 
-var file_statistics_service_pkg_pb_statistics_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_statistics_service_pkg_pb_statistics_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_statistics_service_pkg_pb_statistics_proto_goTypes = []interface{}{
-	(*ViewEvent)(nil), // 0: statistics.ViewEvent
-	(*LikeEvent)(nil), // 1: statistics.LikeEvent
-	(*Event)(nil),     // 2: statistics.Event
+	(*PostStatsRequest)(nil),  // 0: statistics.PostStatsRequest
+	(*PostStatsResponse)(nil), // 1: statistics.PostStatsResponse
+	(*TopPostsRequest)(nil),   // 2: statistics.TopPostsRequest
+	(*Post)(nil),              // 3: statistics.Post
+	(*TopPostsResponse)(nil),  // 4: statistics.TopPostsResponse
+	(*TopUsersRequest)(nil),   // 5: statistics.TopUsersRequest
+	(*User)(nil),              // 6: statistics.User
+	(*TopUsersResponse)(nil),  // 7: statistics.TopUsersResponse
 }
 var file_statistics_service_pkg_pb_statistics_proto_depIdxs = []int32{
-	0, // 0: statistics.Event.view_event:type_name -> statistics.ViewEvent
-	1, // 1: statistics.Event.like_event:type_name -> statistics.LikeEvent
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
+	3, // 0: statistics.TopPostsResponse.posts:type_name -> statistics.Post
+	6, // 1: statistics.TopUsersResponse.users:type_name -> statistics.User
+	0, // 2: statistics.StatisticsService.GetPostStats:input_type -> statistics.PostStatsRequest
+	2, // 3: statistics.StatisticsService.GetTopPosts:input_type -> statistics.TopPostsRequest
+	5, // 4: statistics.StatisticsService.GetTopUsers:input_type -> statistics.TopUsersRequest
+	1, // 5: statistics.StatisticsService.GetPostStats:output_type -> statistics.PostStatsResponse
+	4, // 6: statistics.StatisticsService.GetTopPosts:output_type -> statistics.TopPostsResponse
+	7, // 7: statistics.StatisticsService.GetTopUsers:output_type -> statistics.TopUsersResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -273,7 +519,7 @@ func file_statistics_service_pkg_pb_statistics_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_statistics_service_pkg_pb_statistics_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ViewEvent); i {
+			switch v := v.(*PostStatsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -285,7 +531,7 @@ func file_statistics_service_pkg_pb_statistics_proto_init() {
 			}
 		}
 		file_statistics_service_pkg_pb_statistics_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*LikeEvent); i {
+			switch v := v.(*PostStatsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -297,7 +543,67 @@ func file_statistics_service_pkg_pb_statistics_proto_init() {
 			}
 		}
 		file_statistics_service_pkg_pb_statistics_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event); i {
+			switch v := v.(*TopPostsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_statistics_service_pkg_pb_statistics_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Post); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_statistics_service_pkg_pb_statistics_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TopPostsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_statistics_service_pkg_pb_statistics_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TopUsersRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_statistics_service_pkg_pb_statistics_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*User); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_statistics_service_pkg_pb_statistics_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TopUsersResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -309,19 +615,15 @@ func file_statistics_service_pkg_pb_statistics_proto_init() {
 			}
 		}
 	}
-	file_statistics_service_pkg_pb_statistics_proto_msgTypes[2].OneofWrappers = []interface{}{
-		(*Event_ViewEvent)(nil),
-		(*Event_LikeEvent)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_statistics_service_pkg_pb_statistics_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   8,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_statistics_service_pkg_pb_statistics_proto_goTypes,
 		DependencyIndexes: file_statistics_service_pkg_pb_statistics_proto_depIdxs,

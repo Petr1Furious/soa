@@ -30,7 +30,6 @@ message DeletePostRequest {
 
 message GetPostRequest {
   string postId = 1;
-  string userId = 2;
 }
 
 message ListPostsRequest {

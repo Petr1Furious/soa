@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"statistics_service/pkg/pb"
+	kpb "statistics_service/pkg/kafka_pb"
 
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/protobuf/proto"
@@ -30,22 +30,22 @@ func (sl *StatisticsListener) Listen() {
 			break
 		}
 
-		event := &pb.Event{}
+		event := &kpb.Event{}
 		if err := proto.Unmarshal(msg.Value, event); err != nil {
 			log.Printf("failed to unmarshal event: %v", err)
 			continue
 		}
 
 		switch e := event.EventType.(type) {
-		case *pb.Event_ViewEvent:
+		case *kpb.Event_ViewEvent:
 			viewEvent := e.ViewEvent
-			err := sl.clickhouse.SaveView(viewEvent.UserId, viewEvent.PostId)
+			err := sl.clickhouse.SaveView(viewEvent.UserId, viewEvent.PostId, viewEvent.AuthorId)
 			if err != nil {
 				log.Printf("failed to save view: %v", err)
 			}
-		case *pb.Event_LikeEvent:
+		case *kpb.Event_LikeEvent:
 			likeEvent := e.LikeEvent
-			err := sl.clickhouse.SaveLike(likeEvent.UserId, likeEvent.PostId)
+			err := sl.clickhouse.SaveLike(likeEvent.UserId, likeEvent.PostId, likeEvent.AuthorId)
 			if err != nil {
 				log.Printf("failed to save like: %v", err)
 			}

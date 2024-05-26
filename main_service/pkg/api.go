@@ -31,25 +31,38 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	ppb "posts_service/pkg/pb"
+	kpb "statistics_service/pkg/kafka_pb"
 	spb "statistics_service/pkg/pb"
 )
 
 var db *sql.DB
 
-var grpcClient ppb.PostServiceClient
+var postGrpcClient ppb.PostServiceClient
 
 var kafkaProducer *kafka.Writer
 
+var statisticsGrpcClient spb.StatisticsServiceClient
+
 func InitGRPC() {
-	grpcServerAddr, ok := os.LookupEnv("GRPC_SERVER")
+	grpcServerAddr, ok := os.LookupEnv("POSTS_GRPC_SERVER")
 	if !ok {
-		log.Fatalf("GRPC_SERVER not set")
+		log.Fatalf("POSTS_GRPC_SERVER not set")
 	}
-	conn, err := grpc.Dial(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	grpcClient = ppb.NewPostServiceClient(conn)
+	postGrpcClient = ppb.NewPostServiceClient(conn)
+
+	grpcServerAddr, ok = os.LookupEnv("STATISTICS_GRPC_SERVER")
+	if !ok {
+		log.Fatalf("STATISTICS_GRPC_SERVER not set")
+	}
+	conn, err = grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	}
+	statisticsGrpcClient = spb.NewStatisticsServiceClient(conn)
 }
 
 func InitKafka() {
@@ -395,7 +408,7 @@ func PostsGet(w http.ResponseWriter, r *http.Request) {
 		Page:     int32(page),
 		PageSize: int32(pageSize),
 	}
-	resp, err := grpcClient.ListPosts(r.Context(), createPostRequest)
+	resp, err := postGrpcClient.ListPosts(r.Context(), createPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -436,7 +449,7 @@ func PostsPost(w http.ResponseWriter, r *http.Request) {
 		Content: content,
 		UserId:  userID,
 	}
-	resp, err := grpcClient.CreatePost(r.Context(), createPostRequest)
+	resp, err := postGrpcClient.CreatePost(r.Context(), createPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -456,7 +469,7 @@ func PostsPost(w http.ResponseWriter, r *http.Request) {
 func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	userID, ok := checkAuthAndGetUserID(w, r)
+	_, ok := checkAuthAndGetUserID(w, r)
 	if !ok {
 		return
 	}
@@ -465,10 +478,9 @@ func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
 	postID := vars["postId"]
 
 	var getPostRequest = &ppb.GetPostRequest{
-		UserId: userID,
 		PostId: postID,
 	}
-	resp, err := grpcClient.GetPost(r.Context(), getPostRequest)
+	resp, err := postGrpcClient.GetPost(r.Context(), getPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -500,7 +512,7 @@ func PostsPostIdDelete(w http.ResponseWriter, r *http.Request) {
 		UserId: userID,
 		PostId: postID,
 	}
-	_, err := grpcClient.DeletePost(r.Context(), deletePostRequest)
+	_, err := postGrpcClient.DeletePost(r.Context(), deletePostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -537,7 +549,7 @@ func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
 		PostId:  postID,
 		Content: content,
 	}
-	resp, err := grpcClient.UpdatePost(r.Context(), updatePostRequest)
+	resp, err := postGrpcClient.UpdatePost(r.Context(), updatePostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -565,13 +577,21 @@ func PostsPostIdViewPost(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	postID := vars["postId"]
 
-	viewEvent := &spb.Event_ViewEvent{
-		ViewEvent: &spb.ViewEvent{
-			UserId: userID,
-			PostId: postID,
+	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	authorID := post.UserId
+
+	viewEvent := &kpb.Event_ViewEvent{
+		ViewEvent: &kpb.ViewEvent{
+			UserId:   userID,
+			PostId:   postID,
+			AuthorId: authorID,
 		},
 	}
-	event := &spb.Event{
+	event := &kpb.Event{
 		EventType: viewEvent,
 	}
 	msg, err := proto.Marshal(event)
@@ -602,13 +622,21 @@ func PostsPostIdLikePost(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	postID := vars["postId"]
 
-	likeEvent := &spb.Event_LikeEvent{
-		LikeEvent: &spb.LikeEvent{
-			UserId: userID,
-			PostId: postID,
+	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	authorID := post.UserId
+
+	likeEvent := &kpb.Event_LikeEvent{
+		LikeEvent: &kpb.LikeEvent{
+			UserId:   userID,
+			PostId:   postID,
+			AuthorId: authorID,
 		},
 	}
-	event := &spb.Event{
+	event := &kpb.Event{
 		EventType: likeEvent,
 	}
 	msg, err := proto.Marshal(event)
@@ -626,4 +654,135 @@ func PostsPostIdLikePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func GetPostStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID := vars["postId"]
+
+	resp, err := statisticsGrpcClient.GetPostStats(r.Context(), &spb.PostStatsRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	postStats := PostStats{
+		Id:        postID,
+		ViewCount: resp.ViewCount,
+		LikeCount: resp.LikeCount,
+	}
+
+	respBytes, err := json.Marshal(postStats)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func getUserNameFromDB(userID string) (string, error) {
+	var firstName, lastName sql.NullString
+	query := `SELECT first_name, last_name FROM users WHERE login = $1`
+	err := db.QueryRow(query, userID).Scan(&firstName, &lastName)
+	if err != nil {
+		return "", fmt.Errorf("could not get author name: %v", err)
+	}
+	var authorName string
+	if firstName.Valid && lastName.Valid {
+		authorName = firstName.String + " " + lastName.String
+	} else if firstName.Valid {
+		authorName = firstName.String
+	} else if lastName.Valid {
+		authorName = lastName.String
+	}
+	return authorName, nil
+}
+
+func GetTopPosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	sortBy := r.URL.Query().Get("sortBy")
+
+	resp, err := statisticsGrpcClient.GetTopPosts(r.Context(), &spb.TopPostsRequest{Type: sortBy})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topPosts := make([]TopPost, len(resp.Posts))
+	for i, post := range resp.Posts {
+		authorName, err := getUserNameFromDB(post.AuthorId)
+		if err != nil {
+			http.Error(w, "Error getting author name: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		topPosts[i] = TopPost{
+			Id:         post.Id,
+			AuthorName: authorName,
+			Count:      post.Count,
+		}
+	}
+
+	respBytes, err := json.Marshal(topPosts)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func GetTopUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	resp, err := statisticsGrpcClient.GetTopUsers(r.Context(), &spb.TopUsersRequest{})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topUsers := make([]TopUser, len(resp.Users))
+	for i, user := range resp.Users {
+		name, err := getUserNameFromDB(user.Id)
+		if err != nil {
+			http.Error(w, "Error getting user name: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		topUsers[i] = TopUser{
+			Name:       name,
+			LikesCount: user.LikesCount,
+		}
+	}
+
+	respBytes, err := json.Marshal(topUsers)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
 }

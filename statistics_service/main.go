@@ -45,5 +45,11 @@ func main() {
 		http.ListenAndServe(":80", nil)
 	}()
 
+	grpcServer, err := st.NewServer()
+	if err != nil {
+		log.Fatalf("failed to create server: %v", err)
+	}
+	go grpcServer.Listen()
+
 	statsListener.Listen()
 }
