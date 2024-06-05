@@ -97,6 +97,20 @@ var routes = Routes{
 	},
 
 	Route{
+		"GetTopPosts",
+		strings.ToUpper("Get"),
+		"/posts/top",
+		GetTopPosts,
+	},
+
+	Route{
+		"GetTopUsers",
+		strings.ToUpper("Get"),
+		"/users/top",
+		GetTopUsers,
+	},
+
+	Route{
 		"PostsPostIdGet",
 		strings.ToUpper("Get"),
 		"/posts/{postId}",
@@ -108,5 +122,26 @@ var routes = Routes{
 		strings.ToUpper("Patch"),
 		"/posts/{postId}",
 		PostsPostIdPatch,
+	},
+
+	Route{
+		"PostsPostIdViewPost",
+		strings.ToUpper("Post"),
+		"/posts/{postId}/view",
+		PostsPostIdViewPost,
+	},
+
+	Route{
+		"PostsPostIdLikePost",
+		strings.ToUpper("Post"),
+		"/posts/{postId}/like",
+		PostsPostIdLikePost,
+	},
+
+	Route{
+		"GetPostStats",
+		strings.ToUpper("Get"),
+		"/posts/{postId}/stats",
+		GetPostStats,
 	},
 }

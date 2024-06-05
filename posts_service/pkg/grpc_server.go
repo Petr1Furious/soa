@@ -55,7 +55,7 @@ func NewServer() (*Server, error) {
         CREATE TABLE IF NOT EXISTS posts (
             id SERIAL PRIMARY KEY,
             content TEXT NOT NULL,
-            user_id TEXT NOT NULL
+            user_id BIGINT NOT NULL
         )
     `)
 	if err != nil {
@@ -65,8 +65,8 @@ func NewServer() (*Server, error) {
 	return &Server{db: conn}, nil
 }
 
-func (s *Server) checkUserPermission(ctx context.Context, userId string, postId string) (bool, error) {
-	var dbUserId string
+func (s *Server) checkUserPermission(ctx context.Context, userId int64, postId int64) (bool, error) {
+	var dbUserId int64
 	err := s.db.QueryRow(ctx, `SELECT user_id FROM posts WHERE id = $1`, postId).Scan(&dbUserId)
 	if err != nil {
 		return false, err
@@ -76,7 +76,7 @@ func (s *Server) checkUserPermission(ctx context.Context, userId string, postId 
 }
 
 func (s *Server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb.PostResponse, error) {
-	var id string
+	var id int64
 	err := s.db.QueryRow(ctx, `INSERT INTO posts (content, user_id) VALUES ($1, $2) RETURNING id`, req.Content, req.UserId).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -116,14 +116,9 @@ func (s *Server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 }
 
 func (s *Server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.PostResponse, error) {
-	if ok, err := s.checkUserPermission(ctx, req.UserId, req.PostId); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, fmt.Errorf("user does not have permission to update post")
-	}
-
-	var content, userId string
-	err := s.db.QueryRow(ctx, `SELECT content, user_id FROM posts WHERE id = $1 AND user_id = $2`, req.PostId, req.UserId).Scan(&content, &userId)
+	var content string
+	var userId int64
+	err := s.db.QueryRow(ctx, `SELECT content, user_id FROM posts WHERE id = $1`, req.PostId).Scan(&content, &userId)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +135,8 @@ func (s *Server) ListPosts(ctx context.Context, req *pb.ListPostsRequest) (*pb.L
 
 	var posts []*pb.PostResponse
 	for rows.Next() {
-		var id, content, userId string
+		var id, userId int64
+		var content string
 		err := rows.Scan(&id, &content, &userId)
 		if err != nil {
 			return nil, err

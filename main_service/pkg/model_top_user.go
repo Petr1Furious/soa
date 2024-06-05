@@ -8,8 +8,8 @@
  */
 package swagger
 
-type UsersBody struct {
-	Login string `json:"login,omitempty"`
+type TopUser struct {
+	Name string `json:"name,omitempty"`
 
-	Password string `json:"password,omitempty"`
+	LikesCount int64 `json:"likesCount"`
 }

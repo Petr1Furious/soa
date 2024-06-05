@@ -1,6 +1,7 @@
 go 1.21.1
 
 use (
-    ./main_service
-    ./posts_service
+	./main_service
+	./posts_service
+	./statistics_service
 )

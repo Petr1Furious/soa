@@ -25,30 +25,61 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/segmentio/kafka-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
-	"posts_service/pkg/pb"
+	ppb "posts_service/pkg/pb"
+	kpb "statistics_service/pkg/kafka_pb"
+	spb "statistics_service/pkg/pb"
 )
 
 var db *sql.DB
 
-var grpcClient pb.PostServiceClient
+var postGrpcClient ppb.PostServiceClient
+
+var kafkaProducer *kafka.Writer
+
+var statisticsGrpcClient spb.StatisticsServiceClient
 
 func InitGRPC() {
-	grpcServerAddr, ok := os.LookupEnv("GRPC_SERVER")
+	grpcServerAddr, ok := os.LookupEnv("POSTS_GRPC_SERVER")
 	if !ok {
-		log.Fatalf("GRPC_SERVER not set")
+		log.Fatalf("POSTS_GRPC_SERVER not set")
 	}
-	conn, err := grpc.Dial(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	grpcClient = pb.NewPostServiceClient(conn)
+	postGrpcClient = ppb.NewPostServiceClient(conn)
+
+	grpcServerAddr, ok = os.LookupEnv("STATISTICS_GRPC_SERVER")
+	if !ok {
+		log.Fatalf("STATISTICS_GRPC_SERVER not set")
+	}
+	conn, err = grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	}
+	statisticsGrpcClient = spb.NewStatisticsServiceClient(conn)
+}
+
+func InitKafka() {
+	kafkaAddr, ok := os.LookupEnv("KAFKA_SERVER")
+	if !ok {
+		log.Fatalf("KAFKA_SERVER not set")
+	}
+	kafkaProducer = kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{kafkaAddr},
+		Topic:   "my-topic",
+		Logger:  log.New(os.Stdout, "kafka writer: ", 0),
+	})
 }
 
 func Init() {
 	InitGRPC()
+	InitKafka()
 
 	var err error
 	host, ok := os.LookupEnv("MAIN_DB_HOST")
@@ -75,6 +106,7 @@ func Init() {
 
 	for i := 0; i < 5; i++ {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		id BIGSERIAL PRIMARY KEY,
         login TEXT NOT NULL,
         password TEXT NOT NULL,
         first_name TEXT,
@@ -98,7 +130,7 @@ func Init() {
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        user_id BIGINT NOT NULL,
         created_at TIMESTAMP NOT NULL,
         expires_at TIMESTAMP NOT NULL
     )`)
@@ -190,8 +222,16 @@ func AuthPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var userID int64
+	err = db.QueryRow("SELECT id FROM users WHERE login = $1", auth.Login).Scan(&userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error querying the database: %v", err)
+		return
+	}
+
 	_, err = db.Exec("INSERT INTO sessions(id, user_id, created_at, expires_at) VALUES($1, $2, $3, $4)",
-		sessionID, auth.Login, time.Now(), time.Now().Add(24*time.Hour))
+		sessionID, userID, time.Now(), time.Now().Add(24*time.Hour))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error writing to database: %v", err)
@@ -207,28 +247,28 @@ func AuthPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getUserSessionID(sessionID string) (string, error) {
-	var userID string
+func getUserSessionID(sessionID string) (int64, error) {
+	var userID int64
 	err := db.QueryRow("SELECT user_id FROM sessions WHERE id = $1 AND expires_at > $2", sessionID, time.Now()).Scan(&userID)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	return userID, nil
 }
 
-func checkAuthAndGetUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+func checkAuthAndGetUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	sessionID, err := r.Cookie("SESSIONID")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
-		return "", false
+		return 0, false
 	}
 
 	userID, err := getUserSessionID(sessionID.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
-		return "", false
+		return 0, false
 	}
 
 	return userID, true
@@ -289,7 +329,7 @@ func UsersMePatch(w http.ResponseWriter, r *http.Request) {
 		paramID++
 	}
 
-	query = query[:len(query)-1] + fmt.Sprintf(" WHERE login = $%d", paramID)
+	query = query[:len(query)-1] + fmt.Sprintf(" WHERE id = $%d", paramID)
 	params = append(params, userID)
 
 	_, err = db.Exec(query, params...)
@@ -360,24 +400,24 @@ func PostsGet(w http.ResponseWriter, r *http.Request) {
 
 	params := r.URL.Query()
 	pageStr := params.Get("page")
-	page, err := strconv.Atoi(pageStr)
+	page, err := strconv.ParseInt(pageStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid page number", http.StatusBadRequest)
 		return
 	}
 	pageSizeStr := params.Get("pageSize")
-	pageSize, err := strconv.Atoi(pageSizeStr)
+	pageSize, err := strconv.ParseInt(pageSizeStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid page size", http.StatusBadRequest)
 		return
 	}
 
-	var createPostRequest = &pb.ListPostsRequest{
+	var createPostRequest = &ppb.ListPostsRequest{
 		UserId:   userID,
-		Page:     int32(page),
-		PageSize: int32(pageSize),
+		Page:     page,
+		PageSize: pageSize,
 	}
-	resp, err := grpcClient.ListPosts(r.Context(), createPostRequest)
+	resp, err := postGrpcClient.ListPosts(r.Context(), createPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -414,11 +454,11 @@ func PostsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var createPostRequest = &pb.CreatePostRequest{
+	var createPostRequest = &ppb.CreatePostRequest{
 		Content: content,
 		UserId:  userID,
 	}
-	resp, err := grpcClient.CreatePost(r.Context(), createPostRequest)
+	resp, err := postGrpcClient.CreatePost(r.Context(), createPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -438,19 +478,22 @@ func PostsPost(w http.ResponseWriter, r *http.Request) {
 func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	userID, ok := checkAuthAndGetUserID(w, r)
+	_, ok := checkAuthAndGetUserID(w, r)
 	if !ok {
 		return
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
-
-	var getPostRequest = &pb.GetPostRequest{
-		UserId: userID,
-		PostId: postID,
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
 	}
-	resp, err := grpcClient.GetPost(r.Context(), getPostRequest)
+
+	var getPostRequest = &ppb.GetPostRequest{
+		PostId: int64(postID),
+	}
+	resp, err := postGrpcClient.GetPost(r.Context(), getPostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -476,13 +519,17 @@ func PostsPostIdDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
-	var deletePostRequest = &pb.DeletePostRequest{
+	var deletePostRequest = &ppb.DeletePostRequest{
 		UserId: userID,
 		PostId: postID,
 	}
-	_, err := grpcClient.DeletePost(r.Context(), deletePostRequest)
+	_, err = postGrpcClient.DeletePost(r.Context(), deletePostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -512,20 +559,257 @@ func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
-	var updatePostRequest = &pb.UpdatePostRequest{
+	var updatePostRequest = &ppb.UpdatePostRequest{
 		UserId:  userID,
 		PostId:  postID,
 		Content: content,
 	}
-	resp, err := grpcClient.UpdatePost(r.Context(), updatePostRequest)
+	resp, err := postGrpcClient.UpdatePost(r.Context(), updatePostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func PostsPostIdViewPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	authorID := post.UserId
+
+	viewEvent := &kpb.Event_ViewEvent{
+		ViewEvent: &kpb.ViewEvent{
+			UserId:   userID,
+			PostId:   postID,
+			AuthorId: authorID,
+		},
+	}
+	event := &kpb.Event{
+		EventType: viewEvent,
+	}
+	msg, err := proto.Marshal(event)
+	if err != nil {
+		http.Error(w, "Error marshaling view message", http.StatusInternalServerError)
+		return
+	}
+
+	err = kafkaProducer.WriteMessages(r.Context(), kafka.Message{
+		Value: msg,
+	})
+	if err != nil {
+		http.Error(w, "Kafka: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func PostsPostIdLikePost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	userID, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	authorID := post.UserId
+
+	likeEvent := &kpb.Event_LikeEvent{
+		LikeEvent: &kpb.LikeEvent{
+			UserId:   userID,
+			PostId:   postID,
+			AuthorId: authorID,
+		},
+	}
+	event := &kpb.Event{
+		EventType: likeEvent,
+	}
+	msg, err := proto.Marshal(event)
+	if err != nil {
+		http.Error(w, "Error marshaling like message", http.StatusInternalServerError)
+		return
+	}
+
+	err = kafkaProducer.WriteMessages(r.Context(), kafka.Message{
+		Value: msg,
+	})
+	if err != nil {
+		http.Error(w, "Kafka: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func GetPostStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := statisticsGrpcClient.GetPostStats(r.Context(), &spb.PostStatsRequest{PostId: postID})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	postStats := PostStats{
+		Id:        postID,
+		ViewCount: resp.ViewCount,
+		LikeCount: resp.LikeCount,
+	}
+
+	respBytes, err := json.Marshal(postStats)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func getUserNameFromDB(userID int64) (string, error) {
+	var firstName, lastName sql.NullString
+	query := `SELECT first_name, last_name FROM users WHERE id = $1`
+	err := db.QueryRow(query, userID).Scan(&firstName, &lastName)
+	if err != nil {
+		return "", fmt.Errorf("could not get author name: %v", err)
+	}
+	var authorName string
+	if firstName.Valid && lastName.Valid {
+		authorName = firstName.String + " " + lastName.String
+	} else if firstName.Valid {
+		authorName = firstName.String
+	} else if lastName.Valid {
+		authorName = lastName.String
+	}
+	return authorName, nil
+}
+
+func GetTopPosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	sortBy := r.URL.Query().Get("sortBy")
+
+	resp, err := statisticsGrpcClient.GetTopPosts(r.Context(), &spb.TopPostsRequest{Type: sortBy})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topPosts := make([]TopPost, len(resp.Posts))
+	for i, post := range resp.Posts {
+		authorName, err := getUserNameFromDB(post.AuthorId)
+		if err != nil {
+			http.Error(w, "Error getting author name: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		topPosts[i] = TopPost{
+			Id:         post.Id,
+			AuthorName: authorName,
+			Count:      post.Count,
+		}
+	}
+
+	respBytes, err := json.Marshal(topPosts)
+	if err != nil {
+		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func GetTopUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	_, ok := checkAuthAndGetUserID(w, r)
+	if !ok {
+		return
+	}
+
+	resp, err := statisticsGrpcClient.GetTopUsers(r.Context(), &spb.TopUsersRequest{})
+	if err != nil {
+		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topUsers := make([]TopUser, len(resp.Users))
+	for i, user := range resp.Users {
+		name, err := getUserNameFromDB(user.Id)
+		if err != nil {
+			http.Error(w, "Error getting user name: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		topUsers[i] = TopUser{
+			Name:       name,
+			LikesCount: user.LikesCount,
+		}
+	}
+
+	respBytes, err := json.Marshal(topUsers)
 	if err != nil {
 		http.Error(w, "Error marshaling response", http.StatusInternalServerError)
 		return
