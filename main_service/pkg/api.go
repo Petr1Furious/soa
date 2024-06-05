@@ -106,6 +106,7 @@ func Init() {
 
 	for i := 0; i < 5; i++ {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		id BIGSERIAL PRIMARY KEY,
         login TEXT NOT NULL,
         password TEXT NOT NULL,
         first_name TEXT,
@@ -129,7 +130,7 @@ func Init() {
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        user_id BIGINT NOT NULL,
         created_at TIMESTAMP NOT NULL,
         expires_at TIMESTAMP NOT NULL
     )`)
@@ -221,8 +222,16 @@ func AuthPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var userID int64
+	err = db.QueryRow("SELECT id FROM users WHERE login = $1", auth.Login).Scan(&userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error querying the database: %v", err)
+		return
+	}
+
 	_, err = db.Exec("INSERT INTO sessions(id, user_id, created_at, expires_at) VALUES($1, $2, $3, $4)",
-		sessionID, auth.Login, time.Now(), time.Now().Add(24*time.Hour))
+		sessionID, userID, time.Now(), time.Now().Add(24*time.Hour))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error writing to database: %v", err)
@@ -238,28 +247,28 @@ func AuthPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getUserSessionID(sessionID string) (string, error) {
-	var userID string
+func getUserSessionID(sessionID string) (int64, error) {
+	var userID int64
 	err := db.QueryRow("SELECT user_id FROM sessions WHERE id = $1 AND expires_at > $2", sessionID, time.Now()).Scan(&userID)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	return userID, nil
 }
 
-func checkAuthAndGetUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+func checkAuthAndGetUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	sessionID, err := r.Cookie("SESSIONID")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
-		return "", false
+		return 0, false
 	}
 
 	userID, err := getUserSessionID(sessionID.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w, "Not authenticated")
-		return "", false
+		return 0, false
 	}
 
 	return userID, true
@@ -320,7 +329,7 @@ func UsersMePatch(w http.ResponseWriter, r *http.Request) {
 		paramID++
 	}
 
-	query = query[:len(query)-1] + fmt.Sprintf(" WHERE login = $%d", paramID)
+	query = query[:len(query)-1] + fmt.Sprintf(" WHERE id = $%d", paramID)
 	params = append(params, userID)
 
 	_, err = db.Exec(query, params...)
@@ -391,13 +400,13 @@ func PostsGet(w http.ResponseWriter, r *http.Request) {
 
 	params := r.URL.Query()
 	pageStr := params.Get("page")
-	page, err := strconv.Atoi(pageStr)
+	page, err := strconv.ParseInt(pageStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid page number", http.StatusBadRequest)
 		return
 	}
 	pageSizeStr := params.Get("pageSize")
-	pageSize, err := strconv.Atoi(pageSizeStr)
+	pageSize, err := strconv.ParseInt(pageSizeStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid page size", http.StatusBadRequest)
 		return
@@ -405,8 +414,8 @@ func PostsGet(w http.ResponseWriter, r *http.Request) {
 
 	var createPostRequest = &ppb.ListPostsRequest{
 		UserId:   userID,
-		Page:     int32(page),
-		PageSize: int32(pageSize),
+		Page:     page,
+		PageSize: pageSize,
 	}
 	resp, err := postGrpcClient.ListPosts(r.Context(), createPostRequest)
 	if err != nil {
@@ -475,10 +484,14 @@ func PostsPostIdGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	var getPostRequest = &ppb.GetPostRequest{
-		PostId: postID,
+		PostId: int64(postID),
 	}
 	resp, err := postGrpcClient.GetPost(r.Context(), getPostRequest)
 	if err != nil {
@@ -506,13 +519,17 @@ func PostsPostIdDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	var deletePostRequest = &ppb.DeletePostRequest{
 		UserId: userID,
 		PostId: postID,
 	}
-	_, err := postGrpcClient.DeletePost(r.Context(), deletePostRequest)
+	_, err = postGrpcClient.DeletePost(r.Context(), deletePostRequest)
 	if err != nil {
 		http.Error(w, "gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -542,7 +559,11 @@ func PostsPostIdPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	var updatePostRequest = &ppb.UpdatePostRequest{
 		UserId:  userID,
@@ -575,7 +596,11 @@ func PostsPostIdViewPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
 	if err != nil {
@@ -620,7 +645,11 @@ func PostsPostIdLikePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	post, err := postGrpcClient.GetPost(r.Context(), &ppb.GetPostRequest{PostId: postID})
 	if err != nil {
@@ -665,7 +694,11 @@ func GetPostStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	postID := vars["postId"]
+	postID, err := strconv.ParseInt(vars["postId"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
 
 	resp, err := statisticsGrpcClient.GetPostStats(r.Context(), &spb.PostStatsRequest{PostId: postID})
 	if err != nil {
@@ -690,9 +723,9 @@ func GetPostStats(w http.ResponseWriter, r *http.Request) {
 	w.Write(respBytes)
 }
 
-func getUserNameFromDB(userID string) (string, error) {
+func getUserNameFromDB(userID int64) (string, error) {
 	var firstName, lastName sql.NullString
-	query := `SELECT first_name, last_name FROM users WHERE login = $1`
+	query := `SELECT first_name, last_name FROM users WHERE id = $1`
 	err := db.QueryRow(query, userID).Scan(&firstName, &lastName)
 	if err != nil {
 		return "", fmt.Errorf("could not get author name: %v", err)

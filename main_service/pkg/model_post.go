@@ -9,10 +9,9 @@
 package swagger
 
 type Post struct {
-
-	Id string `json:"id,omitempty"`
+	Id int64 `json:"id,omitempty"`
 
 	Content string `json:"content,omitempty"`
 
-	UserId string `json:"userId,omitempty"`
+	UserId int64 `json:"userId,omitempty"`
 }

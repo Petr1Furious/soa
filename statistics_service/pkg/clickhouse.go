@@ -38,8 +38,8 @@ func NewClickhouse() (*Clickhouse, error) {
 
 func (c *Clickhouse) CreateTables() error {
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS views (user_id String, post_id String, author_id String) ENGINE = MergeTree() ORDER BY user_id`,
-		`CREATE TABLE IF NOT EXISTS likes (user_id String, post_id String, author_id String) ENGINE = MergeTree() ORDER BY user_id`,
+		`CREATE TABLE IF NOT EXISTS views (user_id BIGINT, post_id BIGINT, author_id BIGINT) ENGINE = MergeTree() ORDER BY post_id`,
+		`CREATE TABLE IF NOT EXISTS likes (user_id BIGINT, post_id BIGINT, author_id BIGINT) ENGINE = MergeTree() ORDER BY post_id`,
 	}
 
 	for _, query := range queries {
@@ -51,7 +51,7 @@ func (c *Clickhouse) CreateTables() error {
 	return nil
 }
 
-func (c *Clickhouse) SaveView(userId, postId, authorID string) error {
+func (c *Clickhouse) SaveView(userId, postId, authorID int64) error {
 	query := `SELECT COUNT(*) FROM views WHERE user_id = ? AND post_id = ? AND author_id = ?`
 	var count int
 	if err := c.db.QueryRow(query, userId, postId, authorID).Scan(&count); err != nil {
@@ -71,7 +71,7 @@ func (c *Clickhouse) SaveView(userId, postId, authorID string) error {
 	return err
 }
 
-func (c *Clickhouse) SaveLike(userId, postId, authorID string) error {
+func (c *Clickhouse) SaveLike(userId, postId, authorID int64) error {
 	query := `SELECT COUNT(*) FROM likes WHERE user_id = ? AND post_id = ? AND author_id = ?`
 	var count int
 	if err := c.db.QueryRow(query, userId, postId, authorID).Scan(&count); err != nil {
@@ -91,8 +91,8 @@ func (c *Clickhouse) SaveLike(userId, postId, authorID string) error {
 	return err
 }
 
-func (c *Clickhouse) GetPostStats(postId string) (int, int, error) {
-	var views, likes int
+func (c *Clickhouse) GetPostStats(postId int64) (int64, int64, error) {
+	var views, likes int64
 
 	query := `SELECT COUNT(DISTINCT user_id) as count FROM views WHERE post_id = ?`
 	row := c.db.QueryRow(query, postId)

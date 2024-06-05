@@ -42,7 +42,7 @@ func (s *Server) GetPostStats(ctx context.Context, req *pb.PostStatsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PostStatsResponse{ViewCount: int32(views), LikeCount: int32(likes)}, nil
+	return &pb.PostStatsResponse{ViewCount: views, LikeCount: likes}, nil
 }
 
 func (s *Server) GetTopPosts(ctx context.Context, req *pb.TopPostsRequest) (*pb.TopPostsResponse, error) {

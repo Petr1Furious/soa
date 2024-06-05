@@ -9,9 +9,9 @@
 package swagger
 
 type TopPost struct {
-	Id string `json:"id,omitempty"`
+	Id int64 `json:"id,omitempty"`
 
 	AuthorName string `json:"authorName,omitempty"`
 
-	Count int32 `json:"count"`
+	Count int64 `json:"count"`
 }

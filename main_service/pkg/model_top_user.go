@@ -11,5 +11,5 @@ package swagger
 type TopUser struct {
 	Name string `json:"name,omitempty"`
 
-	LikesCount int32 `json:"likesCount"`
+	LikesCount int64 `json:"likesCount"`
 }

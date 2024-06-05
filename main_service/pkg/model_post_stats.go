@@ -9,9 +9,9 @@
 package swagger
 
 type PostStats struct {
-	Id string `json:"id,omitempty"`
+	Id int64 `json:"id,omitempty"`
 
-	ViewCount int32 `json:"viewCount"`
+	ViewCount int64 `json:"viewCount"`
 
-	LikeCount int32 `json:"likeCount"`
+	LikeCount int64 `json:"likeCount"`
 }
