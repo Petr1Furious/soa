@@ -1,0 +1,20 @@
+version: '3'
+services:
+  posts_service:
+    build: .
+    depends_on:
+      - posts_db
+    environment:
+      POSTS_DB_HOST: ${POSTS_DB_HOST}
+      POSTS_DB_USERNAME: ${POSTS_DB_USERNAME}
+      POSTS_DB_PASSWORD: ${POSTS_DB_PASSWORD}
+      POSTS_DB_NAME: ${POSTS_DB_NAME}
+    ports:
+      - "58157:50051"
+
+  posts_db:
+    image: postgres:16.2
+    environment:
+      POSTGRES_USER: ${POSTS_DB_USERNAME}
+      POSTGRES_PASSWORD: ${POSTS_DB_PASSWORD}
+      POSTGRES_DB: ${POSTS_DB_NAME}

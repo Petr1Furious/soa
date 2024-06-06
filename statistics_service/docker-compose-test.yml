@@ -1,0 +1,45 @@
+services:
+  statistics_service:
+    build: .
+    depends_on:
+      statistics_db:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    environment:
+      STATS_DB_HOST: statistics_db:9000
+      STATS_DB_USERNAME: test
+      STATS_DB_PASSWORD: test
+      KAFKA_SERVER: kafka:9092
+    ports:
+      - "58158:50051"
+
+  statistics_db:
+    image: yandex/clickhouse-server:latest
+    environment:
+      - CLICKHOUSE_USER=test
+      - CLICKHOUSE_PASSWORD=test
+    ports:
+      - "9228:9000"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.1.2:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: nc -z localhost 9092 || exit -1
+      start_period: 15s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    ports:
+      - "9092:9092"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181

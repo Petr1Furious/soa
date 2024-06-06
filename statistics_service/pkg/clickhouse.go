@@ -3,6 +3,7 @@ package statistics_listener
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 
 	_ "github.com/ClickHouse/clickhouse-go"
@@ -15,11 +16,22 @@ type Clickhouse struct {
 }
 
 func NewClickhouse() (*Clickhouse, error) {
-	host := os.Getenv("STATS_DB_HOST")
-	username := os.Getenv("STATS_DB_USERNAME")
-	password := os.Getenv("STATS_DB_PASSWORD")
+	host := os.Getenv("STATS_DB_HOST") //
+	if host == "" {
+		log.Fatalf("STATS_DB_HOST is not set")
+	}
 
-	dsn := fmt.Sprintf("tcp://%s:9000?username=%s&password=%s",
+	username := os.Getenv("STATS_DB_USERNAME")
+	if username == "" {
+		log.Fatalf("STATS_DB_USERNAME is not set")
+	}
+
+	password := os.Getenv("STATS_DB_PASSWORD")
+	if password == "" {
+		log.Fatalf("STATS_DB_PASSWORD is not set")
+	}
+
+	dsn := fmt.Sprintf("tcp://%s?username=%s&password=%s",
 		host, username, password)
 
 	db, err := sql.Open("clickhouse", dsn)
