@@ -13,7 +13,7 @@ import (
 
 type Server struct {
 	pb.UnimplementedPostServiceServer
-	db *pgx.Conn
+	db Database
 }
 
 func NewServer() (*Server, error) {
@@ -62,7 +62,7 @@ func NewServer() (*Server, error) {
 		return nil, fmt.Errorf("unable to create table: %v", err)
 	}
 
-	return &Server{db: conn}, nil
+	return &Server{db: &RealDatabase{conn}}, nil
 }
 
 func (s *Server) checkUserPermission(ctx context.Context, userId int64, postId int64) (bool, error) {

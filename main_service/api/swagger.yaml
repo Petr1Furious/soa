@@ -310,11 +310,11 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: int64
         content:
           type: string
         userId:
-          type: string
+          type: int64
     UsersBody:
       type: object
       properties:
@@ -326,27 +326,27 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: int64
         viewCount:
-          type: integer
+          type: int64
         likeCount:
-          type: integer
+          type: int64
     TopPost:
       type: object
       properties:
         id:
-          type: string
+          type: int64
         authorName:
           type: string
         count:
-          type: integer
+          type: int64
     TopUser:
       type: object
       properties:
         name:
           type: string
         likesCount:
-          type: integer
+          type: int64
   responses:
     UnauthorizedError:
       description: API key is missing or invalid
