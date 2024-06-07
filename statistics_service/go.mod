@@ -4,6 +4,7 @@ go 1.21.1
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.5.4
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/segmentio/kafka-go v0.4.47
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.33.0

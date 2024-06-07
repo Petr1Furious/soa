@@ -1,0 +1,24 @@
+name: Go Test Workflow
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.22
+
+    - name: Test main_service
+      run: go test main_service/pkg
+
+    - name: Test posts_service
+      run: go test posts_service/pkg
+
+    - name: Test statistics_service
+      run: go test statistics_service/pkg

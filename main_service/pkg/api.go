@@ -164,7 +164,7 @@ func ReadBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, false
 	}
-	if err != io.EOF {
+	if err != io.EOF && err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error reading body: %v", err)
 		return nil, false

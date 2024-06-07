@@ -14,8 +14,14 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      MAIN_DB_HOST: ${MAIN_DB_HOST}
+      MAIN_DB_USERNAME: ${MAIN_DB_USERNAME}
+      MAIN_DB_PASSWORD: ${MAIN_DB_PASSWORD}
+      MAIN_DB_NAME: ${MAIN_DB_NAME}
+      POSTS_GRPC_SERVER: ${POSTS_GRPC_SERVER}
+      STATISTICS_GRPC_SERVER: ${STATISTICS_GRPC_SERVER}
+      KAFKA_SERVER: ${KAFKA_SERVER}
 
   main_db:
     image: postgres:16.2
@@ -30,8 +36,11 @@ services:
     build: ./posts_service
     depends_on:
       - posts_db
-    env_file:
-      - .env
+    environment:
+      POSTS_DB_HOST: ${POSTS_DB_HOST}
+      POSTS_DB_USERNAME: ${POSTS_DB_USERNAME}
+      POSTS_DB_PASSWORD: ${POSTS_DB_PASSWORD}
+      POSTS_DB_NAME: ${POSTS_DB_NAME}
 
   posts_db:
     image: postgres:16.2
@@ -49,8 +58,11 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      STATS_DB_HOST: ${STATS_DB_HOST}
+      STATS_DB_USERNAME: ${STATS_DB_USERNAME}
+      STATS_DB_PASSWORD: ${STATS_DB_PASSWORD}
+      KAFKA_SERVER: ${KAFKA_SERVER}
 
   statistics_db:
     image: yandex/clickhouse-server:latest

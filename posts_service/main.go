@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -23,6 +24,8 @@ func main() {
 
 	s := grpc.NewServer()
 	pb.RegisterPostServiceServer(s, server)
+
+	fmt.Println("Posts service started on")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
